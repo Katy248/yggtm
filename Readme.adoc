@@ -1,3 +1,7 @@
 = You gotta get through me
 
 API gateway as https://github.com/gin-gonic/gin[gin] middleware
+
+.TODO:
+* Implement authentication via JWT
+* Implement authorization via RBAC (SpiceDB)
