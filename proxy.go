@@ -31,6 +31,12 @@ func (service *Service) Proxy() gin.HandlerFunc {
 			return
 		}
 
+		for key, values := range c.Request.Header {
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
+		}
+
 		resp, err := client.Do(req)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, ErrorResponse{Details: "proxy error"})

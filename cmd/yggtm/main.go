@@ -11,12 +11,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-func requireAuth() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		panic("not implemented")
-	}
-}
-
 func setupConfig() {
 
 	viper.SetConfigName("yggtm")
@@ -48,18 +42,20 @@ func main() {
 		panic(err)
 	}
 
+	authMiddle := yggtm.NewAuthenticationMiddleware(viper.Sub("auth"))
+
 	userService := &yggtm.Service{
 		Name: "users service",
-		Uri:  "http://localhost:8080",
+		Uri:  "http://localhost:8081",
 	}
 	orgService := &yggtm.Service{
 		Name: "organizations service",
-		Uri:  "http://localhost:8081",
+		Uri:  "http://localhost:8080",
 	}
 
 	userSubject := yggtm.Subject{
 		Name: "user",
-		ID:   yggtm.ReceiveFromAuthHeader(yggtm.ReceiveFromJWT("userId")),
+		ID:   yggtm.ReceiveFromAuthHeader(yggtm.UserIDFromClaims()),
 	}
 
 	server := gin.Default()
@@ -68,13 +64,13 @@ func main() {
 	server.POST("/api/auth/register", userService.Proxy())
 	server.POST("/api/auth/refresh", userService.Proxy())
 
-	server.GET("/api/users/:id", userService.Proxy(), requireAuth())
-	server.POST("/api/users/update-email", userService.Proxy(), requireAuth())
-	server.POST("/api/users/update-password", userService.Proxy(), requireAuth())
+	server.GET("/api/users/:id", userService.Proxy(), authMiddle.RequireAuth())
+	server.POST("/api/users/update-email", userService.Proxy(), authMiddle.RequireAuth())
+	server.POST("/api/users/update-password", userService.Proxy(), authMiddle.RequireAuth())
 
-	server.GET("/api/organizations", orgService.Proxy())
-	server.POST("/api/organizations", orgService.Proxy())
-	server.GET("/api/organizations/my", orgService.Proxy())
+	server.GET("/api/organizations", orgService.Proxy(), authMiddle.RequireAuth())
+	server.POST("/api/organizations", orgService.Proxy(), authMiddle.RequireAuth())
+	server.GET("/api/organizations/my", orgService.Proxy(), authMiddle.RequireAuth())
 	server.GET(
 		"/api/organizations/:id",
 		orgService.Proxy(),
@@ -143,9 +139,9 @@ func main() {
 			"edit",
 		))
 
-	server.GET("/api/invitations", orgService.Proxy(), requireAuth())
-	server.POST("/api/invitations/:id/accept", orgService.Proxy(), requireAuth())
-	server.POST("/api/invitations/:id/reject", orgService.Proxy(), requireAuth())
+	server.GET("/api/invitations", orgService.Proxy(), authMiddle.RequireAuth())
+	server.POST("/api/invitations/:id/accept", orgService.Proxy(), authMiddle.RequireAuth())
+	server.POST("/api/invitations/:id/reject", orgService.Proxy(), authMiddle.RequireAuth())
 
 	if err := server.Run(fmt.Sprintf(":%d", viper.GetInt("server.port"))); err != nil {
 		log.Fatal(err)

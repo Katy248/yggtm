@@ -1,8 +1,11 @@
 package yggtm
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 
+	v1 "github.com/authzed/authzed-go/proto/authzed/api/v1"
 	authzed "github.com/authzed/authzed-go/v1"
 	"github.com/authzed/grpcutil"
 	"github.com/gin-gonic/gin"
@@ -74,6 +77,82 @@ func NewResourcesMiddleware(config *viper.Viper) (*ResourcesMiddleware, error) {
 func (rm *ResourcesMiddleware) ForResource(resource Resource, subject Subject, permissions ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		panic("not implemented")
+		resourceID, err := resource.ResourceID(c)
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+		subjectID, err := subject.ID(c)
+		if err != nil {
+			c.AbortWithError(http.StatusBadRequest, err)
+			return
+		}
+
+		rm.spiceDB.CheckPermission(context.TODO(), &v1.CheckPermissionRequest{
+			Resource: &v1.ObjectReference{
+				ObjectType: resource.Name,
+				ObjectId:   resourceID,
+			},
+			Subject: &v1.SubjectReference{
+				Object: &v1.ObjectReference{
+					ObjectType: subject.Name,
+					ObjectId:   subjectID,
+				},
+			},
+			Permission: permissions[0],
+		})
+
+		requestItems := make([]*v1.CheckBulkPermissionsRequestItem, len(permissions))
+
+		resourceItem := &v1.ObjectReference{
+			ObjectType: resource.Name,
+			ObjectId:   resourceID,
+		}
+		subjectItem := &v1.SubjectReference{
+			Object: &v1.ObjectReference{
+				ObjectType: subject.Name,
+				ObjectId:   subjectID,
+			},
+		}
+
+		for i, permission := range permissions {
+			requestItems[i] = &v1.CheckBulkPermissionsRequestItem{
+				Resource:   resourceItem,
+				Subject:    subjectItem,
+				Permission: permission,
+			}
+		}
+
+		result, err := rm.spiceDB.CheckBulkPermissions(context.TODO(), &v1.CheckBulkPermissionsRequest{
+			Items: requestItems,
+			Consistency: &v1.Consistency{
+				Requirement: &v1.Consistency_FullyConsistent{
+					FullyConsistent: true,
+				},
+			},
+		})
+
+		if err != nil {
+			c.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		for _, pair := range result.Pairs {
+			if err := pair.GetError(); err != nil {
+				c.AbortWithError(http.StatusForbidden, fmt.Errorf("failed to check permission: %s", err))
+				return
+			}
+
+			item := pair.GetItem()
+			if item == nil {
+				c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("permission check response item in nil"))
+			}
+			if item.Permissionship != v1.CheckPermissionResponse_PERMISSIONSHIP_HAS_PERMISSION {
+				c.AbortWithError(http.StatusForbidden,
+					fmt.Errorf("%s:%s has not required permissions (%w) for %s:%s", subjectItem.Object.ObjectType, subjectItem.Object.ObjectId, permissions, resourceItem.ObjectType, resourceItem.ObjectId))
+				return
+			}
+		}
+
 	}
 }

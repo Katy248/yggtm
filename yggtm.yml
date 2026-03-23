@@ -1,0 +1,6 @@
+spicedb:
+  insecure: true
+  address: "localhost:50051"
+
+auth:
+  secret: "your_jwt_security_key_here"

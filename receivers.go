@@ -2,6 +2,7 @@ package yggtm
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,16 +47,26 @@ func ReceiveHeader(header string) ReceiverFunc {
 	}
 }
 
-type AuthHeaderReceiverFunc func(string) (string, error)
+type AuthHeaderReceiverFunc func(headerValue string, context *gin.Context) (string, error)
 
-func ReceiveFromJWT(key string) AuthHeaderReceiverFunc {
-	return func(header string) (string, error) {
-		panic("not implemented")
+func UserIDFromClaims() AuthHeaderReceiverFunc {
+	return func(header string, context *gin.Context) (string, error) {
+		if header == "" {
+			return "", fmt.Errorf("no authorization header")
+		}
+		header = strings.TrimPrefix(header, "Bearer ")
+
+		m := mustGetAuthenticationMiddleware(context)
+		claims, err := m.parseClaims(header)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse token: %s", err)
+		}
+		return claims.UserID, nil
 	}
 }
 
 func ReceiveFromAuthHeader(receiver AuthHeaderReceiverFunc) ReceiverFunc {
 	return func(c *gin.Context) (string, error) {
-		return receiver(c.GetHeader("Authorization"))
+		return receiver(c.GetHeader(AuthorizationHeader), c)
 	}
 }
