@@ -18,6 +18,10 @@ func (service *Service) Proxy() gin.HandlerFunc {
 		c.Next()
 
 		if c.Errors != nil {
+			err := c.Errors.Last()
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"details": err.Error(),
+			})
 			return
 		}
 

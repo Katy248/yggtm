@@ -74,6 +74,7 @@ func main() {
 	server.GET(
 		"/api/organizations/:id",
 		orgService.Proxy(),
+		authMiddle.RequireAuth(),
 		resMiddle.ForResource(
 			yggtm.Resource{
 				Name:       "organizations",
@@ -85,6 +86,7 @@ func main() {
 	server.POST(
 		"/api/organizations/:id",
 		orgService.Proxy(),
+		authMiddle.RequireAuth(),
 		resMiddle.ForResource(
 			yggtm.Resource{
 				Name:       "organizations",
@@ -96,6 +98,7 @@ func main() {
 	server.DELETE(
 		"/api/organizations/:id",
 		orgService.Proxy(),
+		authMiddle.RequireAuth(),
 		resMiddle.ForResource(
 			yggtm.Resource{
 				Name:       "organizations",
@@ -108,6 +111,7 @@ func main() {
 	server.GET(
 		"/api/organizations/:id/members",
 		orgService.Proxy(),
+		authMiddle.RequireAuth(),
 		resMiddle.ForResource(
 			yggtm.Resource{
 				Name:       "organizations",
@@ -119,6 +123,7 @@ func main() {
 	server.POST(
 		"/api/organizations/:id/members",
 		orgService.Proxy(),
+		authMiddle.RequireAuth(),
 		resMiddle.ForResource(
 			yggtm.Resource{
 				Name:       "organizations",
@@ -130,6 +135,7 @@ func main() {
 	server.DELETE(
 		"/api/organizations/:id/members",
 		orgService.Proxy(),
+		authMiddle.RequireAuth(),
 		resMiddle.ForResource(
 			yggtm.Resource{
 				Name:       "organizations",
