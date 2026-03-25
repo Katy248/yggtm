@@ -41,7 +41,11 @@ func (am *AuthenticationMiddleware) parseClaims(token string) (Claims, error) {
 	}
 	return parsedClaims, nil
 }
-
+func (am *AuthenticationMiddleware) WithMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		ctx.Set(AuthMiddlewareKey, am)
+	}
+}
 func (am *AuthenticationMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set(AuthMiddlewareKey, am)
